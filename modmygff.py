@@ -15,30 +15,13 @@ from typing import (Any, Callable, Dict, Iterable, List, Optional, Tuple, Type,
 import pandas as pd
 
 from gff3 import Gff3
+from tqdm import tqdm
 
 """
 Example:
     (Windows)
     python -m modmygff --gff_path .\data\Slin_CCMP2456\S.linucheae_CCMP2456_eg1.gff --anno_path .\data\Slin_CCMP2456\S.linucheae_CCMP2456_uniprot_annotated.tsv --output_path .\data\Slin_CCMP2456\S.linucheae_CCMP2456_eg1_ext.gff
 """
-
-
-def test_stuff():
-    eg_gff_path = os.path.join(os.getcwd(), 'data', 'Slin_CCMP2456',
-                               'S.linucheae_CCMP2456_eg1.gff')
-
-    eg_gff: Gff3 = Gff3(gff_file=eg_gff_path)
-    pprint(eg_gff.lines[0].keys())
-    pprint(eg_gff.lines[0]['attributes'])
-    pprint(eg_gff.lines[0]['attributes']['ID'])
-    eg_gff.lines[0]['attributes']['Dbxref'] = 'UniProtKB/Swiss-Prot:P12345'
-    eg_gff.lines[0]['attributes']['geneID'] = 'amtB'
-
-    # eg_gff_ext_path = os.path.join(os.getcwd(), 'data', 'Slin_CCMP2456',
-    #                                'S.linucheae_CCMP2456_eg1_ext.gff')
-
-    # with open(eg_gff_ext_path, 'w') as eg_gff_ext_file:
-    #     eg_gff.write(eg_gff_ext_file)
 
 
 class Modifier:
@@ -81,18 +64,21 @@ class Modifier:
         Returns the corresponding extended information for the given index.
         """
 
-        if 'mRNA1'.lower() not in index.lower():
-            index += '.mRNA1'
-        elif index.lower().endswith('.mrna1'):
-            pass
-        else:
-            index = '.'.join(index.split('.')[:3])
-
         try:
-            # Get the corresponding row in the annotation file
             anno_row = self.__anno_df.loc[index]
         except KeyError:
-            return {}
+            if 'mRNA1'.lower() not in index.lower():
+                index += '.mRNA1'
+            elif index.lower().endswith('.mrna1'):
+                pass
+            else:
+                index = '.'.join(index.split('.')[:3])
+
+            try:
+                # Get the corresponding row in the annotation file
+                anno_row = self.__anno_df.loc[index]
+            except KeyError:
+                return {}
 
         return_dict = {}
 
@@ -115,7 +101,7 @@ class Modifier:
         annotation file.
         """
 
-        for line in gff.lines:
+        for line in tqdm(iterable=gff.lines, desc='Modify Compilation', ascii=True):
 
             # Get the ID to use to index on this modifier
             gene_ID = line['attributes']['ID']
@@ -204,29 +190,16 @@ class Modifier:
                 "Not equipped to handle db xref (" + db_xref_id + ") with prefix: " + repr(db_xref_prefix))
 
 
-def main():
-    eg_anno_path = os.path.join(os.getcwd(), 'data', 'Slin_CCMP2456',
-                                'S.linucheae_CCMP2456_uniprot_annotated.tsv')
-
-    test_mod = Modifier(eg_anno_path)
-
-    eg_gff_path = os.path.join(os.getcwd(), 'data', 'Slin_CCMP2456',
-                               'S.linucheae_CCMP2456_eg1.gff')
-
-    eg_gff: Gff3 = Gff3(gff_file=eg_gff_path)
-    print(eg_gff.lines[0]["attributes"])
-    test_mod.modify_gff(eg_gff)
-    print(eg_gff.lines[0]["attributes"])
-
-
 def run_modifier(args):
 
     modifier = Modifier(args.anno_path, anno_delim=args.anno_delim)
+    print("Reading gff file")
     gff: Gff3 = Gff3(gff_file=args.gff_path)
 
     # Modify the gff file using the Modifier class
     modifier.modify_gff(gff)
 
+    print("Writing modified gff file")
     # Write the modified gff to the output path
     if args.output_path is None:
         gff.write(sys.stdout)
