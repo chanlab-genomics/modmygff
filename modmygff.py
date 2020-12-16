@@ -3,14 +3,18 @@
 __author__ = 'Michael Ciccotosto-Camp'
 __version__ = ''
 
+import argparse
 import os
-from gff3 import Gff3
-
-from pprint import pprint
-
+import sys
 import warnings
+from functools import lru_cache
+from pprint import pprint
+from typing import (Any, Callable, Dict, Iterable, List, Optional, Tuple, Type,
+                    Union)
+
 import pandas as pd
-from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple, Type, Union
+
+from gff3 import Gff3
 
 
 def test_stuff():
@@ -65,11 +69,10 @@ class Modifier:
         # detect the separator.
         self.__anno_df = self.open_anno_file()
 
+    @lru_cache()
     def __getitem__(self, index: str) -> str:
         """
         Returns the corresponding extended information for the given index.
-
-        NOTE: Try lru cache!
         """
 
         if 'mRNA1'.lower() not in index.lower():
@@ -77,7 +80,7 @@ class Modifier:
         elif index.lower().endswith('.mrna1'):
             pass
         else:
-            index = ''.join(index.split('.')[:3])
+            index = '.'.join(index.split('.')[:3])
 
         try:
             # Get the corresponding row in the annotation file
@@ -85,19 +88,34 @@ class Modifier:
         except KeyError:
             return {}
 
+        return_dict = {}
+
         gene_name = self.extract_value(anno_row, "gene_name")
 
-        accession = self.extract_value(anno_row, "accession")
-        accession = self.process_accession(accession)
+        if gene_name is not None:
+            return_dict["geneID"] = gene_name
 
-        return {"geneID": gene_name, "Dbxref": accession}
+        accession = self.extract_value(anno_row, "accession")
+
+        if accession is not None:
+            accession = self.process_accession(accession)
+            return_dict["Dbxref"] = accession
+
+        return return_dict
 
     def modify_gff(self, gff: Gff3):
         """
         Modifies an existing Gff3 object by adding contents from the input
         annotation file.
         """
-        ...
+
+        for line in gff.lines:
+
+            # Get the ID to use to index on this modifier
+            gene_ID = line['attributes']['ID']
+            line['attributes'].update(self[gene_ID])
+
+        return
 
     def open_anno_file(self):
         """
@@ -184,8 +202,60 @@ def main():
     eg_anno_path = os.path.join(os.getcwd(), 'data', 'Slin_CCMP2456',
                                 'S.linucheae_CCMP2456_uniprot_annotated.tsv')
 
-    test_csv = Modifier(eg_anno_path)
-    pprint(test_csv["Slin_CCMP2456.gene6648"])
+    test_mod = Modifier(eg_anno_path)
+
+    eg_gff_path = os.path.join(os.getcwd(), 'data', 'Slin_CCMP2456',
+                               'S.linucheae_CCMP2456_eg1.gff')
+
+    eg_gff: Gff3 = Gff3(gff_file=eg_gff_path)
+    print(eg_gff.lines[0]["attributes"])
+    test_mod.modify_gff(eg_gff)
+    print(eg_gff.lines[0]["attributes"])
+
+
+def run_modifier(args):
+
+    modifier = Modifier(args.anno_path, anno_delim=args.anno_delim)
+    gff: Gff3 = Gff3(gff_file=args.gff_path)
+
+    # Modify the gff file using the Modifier class
+    modifier.modify_gff(gff)
+
+    # Write the modified gff to the output path
+    if args.output_path is None:
+        gff.write(sys.stdout)
+
+    else:
+        with open(args.output_path, "w") as file_out:
+            gff.write(file_out)
+
+
+def main():
+
+    parser = argparse.ArgumentParser(description="Creates a flat file from a "
+                                     "given gff file and annotations file.")
+
+    parser.add_argument('--gff_path', type=str, required=True,
+                        help='A file path to the gff file.')
+    parser.add_argument('--anno_path', type=str, required=True,
+                        help="A file path to the annotation file. "
+                        "Every annotation MUST have a column named 'sequence' "
+                        "which is a unique identifier. Other optional columns "
+                        "to include are: 'accession' 'function' 'gene_name' "
+                        "'gene_synonym' and 'EC_number'. NOTE: these column "
+                        "names are case sensitive.")
+
+    parser.add_argument('--output_path', type=str, required=False, default=None,
+                        help='A file path to output the contents of the flatfile. '
+                        'Default output file is stdout.')
+    parser.add_argument('--anno_delim', type=str,
+                        required=False, default='\t',
+                        help='A delimiter value for the annotation file.')
+
+    args = parser.parse_args()
+    run_modifier(args)
+
+    exit(0)
 
 
 if __name__ == '__main__':
