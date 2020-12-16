@@ -33,7 +33,7 @@ def test_stuff():
 
 class Modifier:
     """
-    A class that extracts important information from a annotation file to 
+    A class that extracts important information from a annotation file to
     modify a gff file.
     """
 
@@ -65,7 +65,7 @@ class Modifier:
         # detect the separator.
         self.__anno_df = self.open_anno_file()
 
-    def __index__(self, index: str) -> str:
+    def __getitem__(self, index: str) -> str:
         """
         Returns the corresponding extended information for the given index.
 
@@ -73,14 +73,17 @@ class Modifier:
         """
 
         if 'mRNA1'.lower() not in index.lower():
-            index += '.mRNA'
-        elif index.lower().endswith('.mrna'):
+            index += '.mRNA1'
+        elif index.lower().endswith('.mrna1'):
             pass
         else:
             index = ''.join(index.split('.')[:3])
 
-        # Get the corresponding row in the annotation file
-        anno_row = self.__anno_df[index]
+        try:
+            # Get the corresponding row in the annotation file
+            anno_row = self.__anno_df.loc[index]
+        except KeyError:
+            return {}
 
         gene_name = self.extract_value(anno_row, "gene_name")
 
@@ -91,7 +94,7 @@ class Modifier:
 
     def modify_gff(self, gff: Gff3):
         """
-        Modifies an existing Gff3 object by adding contents from the input 
+        Modifies an existing Gff3 object by adding contents from the input
         annotation file.
         """
         ...
@@ -105,12 +108,12 @@ class Modifier:
         # given delimiter using the c-engine. We will only use the python engine
         # if specified the delimiter is None.
 
-        if self.__anno_delim is None:
+        if self._anno_delim is None:
             return pd.read_csv(
-                self.__annotation_path, engine='python', sep=None,  index_col='sequence').astype(str)
+                self._anno_path, engine='python', sep=None,  index_col='sequence').astype(str)
 
         anno_df = pd.read_csv(
-            self.__annotation_path, engine='c', sep=self.__anno_delim,  index_col='sequence')
+            self._anno_path, engine='c', sep=self._anno_delim,  index_col='sequence')
 
         _, df_cols = anno_df.shape
 
@@ -122,12 +125,12 @@ class Modifier:
 
         warning_message = 'Could not separate annotation dataframe' + \
             'with --delimiter={0!r}. Switching to python engine parser.'
-        warning_message = warning_message.format(self.__anno_delim)
+        warning_message = warning_message.format(self._anno_delim)
 
         warnings.warn(warning_message, RuntimeWarning)
 
         return pd.read_csv(
-            self.__annotation_path, engine='python', sep=None,  index_col='sequence').astype(str)
+            self._anno_path, engine='python', sep=None,  index_col='sequence').astype(str)
 
     def extract_value(self, anno_row: pd.Series, value: str) -> str:
         """
@@ -180,6 +183,9 @@ class Modifier:
 def main():
     eg_anno_path = os.path.join(os.getcwd(), 'data', 'Slin_CCMP2456',
                                 'S.linucheae_CCMP2456_uniprot_annotated.tsv')
+
+    test_csv = Modifier(eg_anno_path)
+    pprint(test_csv["Slin_CCMP2456.gene6648"])
 
 
 if __name__ == '__main__':
