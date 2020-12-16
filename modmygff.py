@@ -21,6 +21,9 @@ from tqdm import tqdm
 Example:
     (Windows)
     python -m modmygff --gff_path .\data\Slin_CCMP2456\S.linucheae_CCMP2456_eg1.gff --anno_path .\data\Slin_CCMP2456\S.linucheae_CCMP2456_uniprot_annotated.tsv --output_path .\data\Slin_CCMP2456\S.linucheae_CCMP2456_eg1_ext.gff
+
+    (Unix)
+    python3.6 -m modmygff --anno_path /QRISdata/Q2015/ena_genome_submission/Stri_CCMP2592/S.tridacnidorum_CCMP2592_uniprot_annotated.tsv --gff_path /QRISdata/Q2015/ena_genome_submission/Stri_CCMP2592/S.tridacnidorum_CCMP2592.gff --output_path /QRISdata/Q2015/ena_genome_submission/Stri_CCMP2592/S.tridacnidorum_CCMP2592_ext.gff
 """
 
 
@@ -182,9 +185,9 @@ class Modifier:
         db_xref_prefix, db_xref_id = db_xref_prefix.strip(), db_xref_id.strip()
 
         if db_xref_prefix == "sp":
-            return 'db_xref="UniProtKB/Swiss-Prot:{0}"'.format(db_xref_id)
+            return 'UniProtKB/Swiss-Prot:{0}'.format(db_xref_id)
         elif db_xref_prefix == "tr":
-            return 'db_xref="UniProtKB/TrEMBL:{0}"'.format(db_xref_id)
+            return 'UniProtKB/TrEMBL:{0}'.format(db_xref_id)
         else:
             raise NotImplementedError(
                 "Not equipped to handle db xref (" + db_xref_id + ") with prefix: " + repr(db_xref_prefix))
