@@ -1061,7 +1061,7 @@ class Gff3(object):
         field_keys = ['seqid', 'source', 'type',
                       'start', 'end', 'score', 'strand', 'phase']
         reserved_attributes = ['ID', 'Name', 'Alias', 'Parent', 'Target', 'Gap',
-                               'Derives_from', 'Note', 'Dbxref', 'Ontology_term', 'Is_circular']
+                               'Derives_from', 'Note', 'geneID', 'Dbxref', 'Ontology_term', 'Is_circular']
         attributes_sort_map = defaultdict(
             int, zip(reserved_attributes, range(len(reserved_attributes), 0, -1)))
 
