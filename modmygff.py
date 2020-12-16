@@ -16,6 +16,12 @@ import pandas as pd
 
 from gff3 import Gff3
 
+"""
+Example:
+    (Windows)
+    python -m modmygff --gff_path .\data\Slin_CCMP2456\S.linucheae_CCMP2456_eg1.gff --anno_path .\data\Slin_CCMP2456\S.linucheae_CCMP2456_uniprot_annotated.tsv --output_path .\data\Slin_CCMP2456\S.linucheae_CCMP2456_eg1_ext.gff
+"""
+
 
 def test_stuff():
     eg_gff_path = os.path.join(os.getcwd(), 'data', 'Slin_CCMP2456',
