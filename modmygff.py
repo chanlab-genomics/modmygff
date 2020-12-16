@@ -21,6 +21,9 @@ from tqdm import tqdm
 Example:
     (Windows)
     python -m modmygff --gff_path .\data\Slin_CCMP2456\S.linucheae_CCMP2456_eg1.gff --anno_path .\data\Slin_CCMP2456\S.linucheae_CCMP2456_uniprot_annotated.tsv --output_path .\data\Slin_CCMP2456\S.linucheae_CCMP2456_eg1_ext.gff
+
+    python -m modmygff --gff_path .\data\Snat_CCMP2548\S.natans_CCMP2548_eg.gff --anno_path .\data\Snat_CCMP2548\S.natans_CCMP2548_uniprot_annotated.tsv --output_path .\data\Snat_CCMP2548\S.natans_CCMP2548_eg_ext.gff
+
 """
 
 
@@ -162,13 +165,18 @@ class Modifier:
         """
 
         try:
-            extracted_value = anno_row[value]
+            extracted_value: str = anno_row[value]
         except KeyError:
             return None
 
         # Don't add the gene name if it has na
         if extracted_value.lower() in ['na', 'nan']:
             return None
+
+        # Check for error by searching for a semi-colon
+        if ";" in extracted_value:
+            extracted_value, _ = extracted_value.split(";", maxsplit=1)
+            extracted_value = extracted_value.strip()
 
         return extracted_value
 
