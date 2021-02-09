@@ -73,10 +73,13 @@ class Modifier:
 
             try:
                 anno_row = df.loc[index]
-            except KeyError:
-                index = '.'.join(index.split('.')[:4])
 
-                print(index)
+            except KeyError:
+
+                if index.startswith('cds.'):
+                    index = '.'.join(index.split('.')[1:5])
+                else:
+                    index = '.'.join(index.split('.')[0:4])
 
                 try:
                     # Get the corresponding row in the annotation file
@@ -92,6 +95,17 @@ class Modifier:
 
         return return_list
 
+    def list_to_dict(self, input_list: list):
+
+        new_dict = dict(zip((k for k, _ in input_list), [
+                        list() for _ in range(len(input_list))]))
+
+        for k, v in input_list:
+
+            new_dict[k].append(v)
+
+        return new_dict
+
     def modify_gff(self, gff: Gff3):
         """
         Modifies an existing Gff3 object by adding contents from the input
@@ -104,8 +118,9 @@ class Modifier:
             # Get the ID to use to index on this modifier
             gene_ID = line['attributes']['ID']
             update_list = self[gene_ID]
-            print(update_list)
-            # .update(self[gene_ID])
+
+            line['attributes'].update(self.list_to_dict(update_list))
+
         return
 
     def open_anno_file(self, anno_path: str = None, ID_index: int = 0, ref_index: int = 1):
@@ -198,8 +213,6 @@ def run_modifier(args):
 
     # Modify the gff file using the Modifier class
     modifier.modify_gff(gff)
-
-    return
 
     print("Writing modified gff file")
     # Write the modified gff to the output path
