@@ -9,8 +9,6 @@ import sys
 import warnings
 from functools import lru_cache
 from pprint import pprint
-from typing import (Any, Callable, Dict, Iterable, List, Optional, Tuple, Type,
-                    Union)
 
 import pandas as pd
 
@@ -35,7 +33,7 @@ class Modifier:
     modify a gff file.
     """
 
-    def __init__(self, anno_path: str, anno_delim: str = '\t'):
+    def __init__(self, anno_file: list):
         """
         Creates a new instance of a gff modifier.
 
@@ -48,57 +46,51 @@ class Modifier:
                 single tab.
         """
 
-        if anno_delim == 'None':
-            anno_delim = None
+        self.__anno_dfs = []
 
-        else:
-            for old, new in [('\\n', '\n'), ('\\t', '\t'), ('\\r', '\r')]:
-                anno_delim = anno_delim.replace(old, new)
+        for path, ID_index, ref_index in anno_file:
 
-        self._anno_path: str = anno_path
-        self._anno_delim: str = anno_delim
+            ID_index = int(ID_index)
+            ref_index = int(ref_index)
 
-        # Open the annotations path as a pandas dataframe.
-        # Set sep=None so that the Python parsing engine can automatically
-        # detect the separator.
-        self.__anno_df = self.open_anno_file()
+            open_anno_kwargs = {"anno_path": path,
+                                "ID_index": ID_index, "ref_index": ref_index}
 
-    @lru_cache()
+            anno_df = self.open_anno_file(**open_anno_kwargs)
+
+            self.__anno_dfs.append(anno_df)
+
+            print(anno_df)
+
     def __getitem__(self, index: str) -> str:
         """
         Returns the corresponding extended information for the given index.
         """
 
-        try:
-            anno_row = self.__anno_df.loc[index]
-        except KeyError:
-            if 'mRNA1'.lower() not in index.lower():
-                index += '.mRNA1'
-            elif index.lower().endswith('.mrna1'):
-                pass
-            else:
-                index = '.'.join(index.split('.')[:3])
+        return_list = []
+
+        for df in self.__anno_dfs:
 
             try:
-                # Get the corresponding row in the annotation file
-                anno_row = self.__anno_df.loc[index]
+                anno_row = df.loc[index]
             except KeyError:
-                return {}
+                index = '.'.join(index.split('.')[:4])
 
-        return_dict = {}
+                print(index)
 
-        gene_name = self.extract_value(anno_row, "gene_name")
+                try:
+                    # Get the corresponding row in the annotation file
+                    anno_row = df.loc[index]
+                except KeyError:
+                    continue
 
-        if gene_name is not None:
-            return_dict["geneID"] = gene_name
+            accession = self.extract_value(anno_row, "ref")
 
-        accession = self.extract_value(anno_row, "accession")
+            if accession is not None:
+                accession = self.process_accession(accession)
+                return_list.append(("Dbxref", accession))
 
-        if accession is not None:
-            accession = self.process_accession(accession)
-            return_dict["Dbxref"] = accession
-
-        return return_dict
+        return return_list
 
     def modify_gff(self, gff: Gff3):
         """
@@ -106,46 +98,39 @@ class Modifier:
         annotation file.
         """
 
-        for line in tqdm(iterable=gff.lines, desc='Modify Compilation', ascii=True):
+        # for line in tqdm(iterable=gff.lines, desc='Modify Compilation', ascii=True):
+        for line in gff.lines:
 
             # Get the ID to use to index on this modifier
             gene_ID = line['attributes']['ID']
-            line['attributes'].update(self[gene_ID])
-
+            update_list = self[gene_ID]
+            print(update_list)
+            # .update(self[gene_ID])
         return
 
-    def open_anno_file(self):
+    def open_anno_file(self, anno_path: str = None, ID_index: int = 0, ref_index: int = 1):
         """
         Opens the annotations file.
+
+        Parameters:
+            anno_path:
+                The path to the annotation file.
+
+            ID_index:
+                The ID index to the corresponding annotation file.
+
+            ref_index:
+                The reference index to the corresponding annotation file.
+
+        Return:
+            Returns a 2-column pandas dataframe with the first column being
+            the gene ID and the second column being the reference index.
         """
 
-        # Try opening the annotations file using the given delimiter using the
-        # given delimiter using the c-engine. We will only use the python engine
-        # if specified the delimiter is None.
+        anno_df = pd.read_csv(anno_path, engine='python',
+                              sep='\t', header=None, usecols=[ID_index, ref_index], names=["ID", "ref"], index_col="ID").astype(str)
 
-        if self._anno_delim is None:
-            return pd.read_csv(
-                self._anno_path, engine='python', sep=None,  index_col='sequence').astype(str)
-
-        anno_df = pd.read_csv(
-            self._anno_path, engine='c', sep=self._anno_delim,  index_col='sequence')
-
-        _, df_cols = anno_df.shape
-
-        if df_cols != 0:
-            return anno_df.astype(str)
-
-        # If we only have one column then the delimiter we are using probably is
-        # not correct. We should have at least two columns.
-
-        warning_message = 'Could not separate annotation dataframe' + \
-            'with --delimiter={0!r}. Switching to python engine parser.'
-        warning_message = warning_message.format(self._anno_delim)
-
-        warnings.warn(warning_message, RuntimeWarning)
-
-        return pd.read_csv(
-            self._anno_path, engine='python', sep=None,  index_col='sequence').astype(str)
+        return anno_df
 
     def extract_value(self, anno_row: pd.Series, value: str) -> str:
         """
@@ -187,27 +172,34 @@ class Modifier:
         Processes the accession value from the annotation file.
         """
 
-        db_xref_prefix, db_xref_id, *_ = accession.split(sep='|')
+        if accession.startswith("tr|") or accession.startswith("sp|"):
 
-        db_xref_prefix, db_xref_id = db_xref_prefix.strip(), db_xref_id.strip()
+            db_xref_prefix, db_xref_id, *_ = accession.split(sep='|')
 
-        if db_xref_prefix == "sp":
-            return 'UniProtKB/Swiss-Prot:{0}'.format(db_xref_id)
-        elif db_xref_prefix == "tr":
-            return 'UniProtKB/TrEMBL:{0}'.format(db_xref_id)
-        else:
-            raise NotImplementedError(
-                "Not equipped to handle db xref (" + db_xref_id + ") with prefix: " + repr(db_xref_prefix))
+            db_xref_prefix, db_xref_id = db_xref_prefix.strip(), db_xref_id.strip()
+
+            if db_xref_prefix == "sp":
+                return 'UniProtKB/Swiss-Prot:{0}'.format(db_xref_id)
+            elif db_xref_prefix == "tr":
+                return 'UniProtKB/TrEMBL:{0}'.format(db_xref_id)
+
+        elif accession.startswith("PF"):
+            return 'PFAM:{0}'.format(accession)
+
+        raise NotImplementedError(
+            "Not equipped to handle db xref (" + accession + ")")
 
 
 def run_modifier(args):
 
-    modifier = Modifier(args.anno_path, anno_delim=args.anno_delim)
+    modifier = Modifier(args.annotation)
     print("Reading gff file")
     gff: Gff3 = Gff3(gff_file=args.gff_path)
 
     # Modify the gff file using the Modifier class
     modifier.modify_gff(gff)
+
+    return
 
     print("Writing modified gff file")
     # Write the modified gff to the output path
@@ -221,25 +213,20 @@ def run_modifier(args):
 
 def main():
 
+    # test: python .\modmygff.py --gff_path ".\data\Pgla_CCMP1383\Pgla_CCMP1383_test.gff3" --annotation ".\data\Pgla_CCMP1383\CCMP1383_UniProt.tsv" 0 1  --annotation ".\data\Pgla_CCMP1383\CCMP1383_scaffolds_PFAM.tsv" 0 5 --output_path ".\data\test_Pgla_CCMP1383_output.gff3"
+
     parser = argparse.ArgumentParser(description="Creates a flat file from a "
                                      "given gff file and annotations file.")
 
     parser.add_argument('--gff_path', type=str, required=True,
                         help='A file path to the gff file.')
-    parser.add_argument('--anno_path', type=str, required=True,
-                        help="A file path to the annotation file. "
-                        "Every annotation MUST have a column named 'sequence' "
-                        "which is a unique identifier. Other optional columns "
-                        "to include are: 'accession' 'function' 'gene_name' "
-                        "'gene_synonym' and 'EC_number'. NOTE: these column "
-                        "names are case sensitive.")
+    parser.add_argument('--annotation', action='append', nargs=3, required=True,
+                        metavar=('path', 'index_col', 'ref_col'),
+                        help="A file path to the annotation file.")
 
     parser.add_argument('--output_path', type=str, required=False, default=None,
                         help='A file path to output the contents of the flatfile. '
                         'Default output file is stdout.')
-    parser.add_argument('--anno_delim', type=str,
-                        required=False, default='\t',
-                        help='A delimiter value for the annotation file.')
 
     args = parser.parse_args()
     run_modifier(args)

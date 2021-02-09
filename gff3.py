@@ -89,9 +89,10 @@ def fasta_file_to_dict(fasta_file, id=True, header=False, seq=False):
             count += 1
             key = '||'.join([entry[i] for i in keys if flags[i]])
             if key:  # key != ''
-                if key in fasta_dict:  # check for duplicate key
-                    logger.warning('%s : Line %d : Duplicate %s [%s] : ID = [%s].', fasta_file_f.name, line_num, '||'.join(
-                        [i for i in keys if flags[i]]), key[:25] + (key[25:] and '..'), entry['id'])
+                # NOTE: removed
+                # if key in fasta_dict:  # check for duplicate key
+                    # logger.warning('%s : Line %d : Duplicate %s [%s] : ID = [%s].', fasta_file_f.name, line_num, '||'.join(
+                    #     [i for i in keys if flags[i]]), key[:25] + (key[25:] and '..'), entry['id'])
                 entry['seq'] = ''.join(entry['seq'])
                 fasta_dict[key] = entry
                 # check for url escaped id
@@ -115,9 +116,9 @@ def fasta_file_to_dict(fasta_file, id=True, header=False, seq=False):
 
     key = '||'.join([entry[i] for i in keys if flags[i]])
     if key:  # key != ''
-        if key in fasta_dict:
-            logger.warning('%s : Line %d : Duplicate %s [%s] : ID = [%s].', fasta_file_f.name, line_num, '||'.join(
-                [i for i in keys if flags[i]]), key[:25] + (key[25:] and '..'), entry['id'])
+        # if key in fasta_dict:
+        #     logger.warning('%s : Line %d : Duplicate %s [%s] : ID = [%s].', fasta_file_f.name, line_num, '||'.join(
+        #         [i for i in keys if flags[i]]), key[:25] + (key[25:] and '..'), entry['id'])
         entry['seq'] = ''.join(entry['seq'])
         fasta_dict[key] = entry
         # check for url escaped id
@@ -879,9 +880,9 @@ class Gff3(object):
                                                         'message': 'Unknown reserved (uppercase) attribute: "%s"' % tag, 'error_type': 'FORMAT', 'location': ''})
                                 elif tag == 'ID':
                                     # check for duplicate ID in non-adjacent lines
-                                    if value in features and lines[-1]['attributes'][tag] != value:
-                                        self.add_line_error(line_data, {'message': 'Duplicate ID: "%s" in non-adjacent lines: %s' % (value, ','.join(
-                                            [str(f['line_index'] + 1) for f in features[value]])), 'error_type': 'FORMAT', 'location': ''}, log_level=logging.WARNING)
+                                    # if value in features and lines[-1]['attributes'][tag] != value:
+                                    #     self.add_line_error(line_data, {'message': 'Duplicate ID: "%s" in non-adjacent lines: %s' % (value, ','.join(
+                                    #         [str(f['line_index'] + 1) for f in features[value]])), 'error_type': 'FORMAT', 'location': ''}, log_level=logging.WARNING)
                                     features[value].append(line_data)
                 except IndexError:
                     pass
