@@ -4,27 +4,13 @@ __author__ = 'Michael Ciccotosto-Camp'
 __version__ = ''
 
 import argparse
-import os
 import sys
-import warnings
 from functools import lru_cache
-from pprint import pprint
 
 import pandas as pd
 
 from gff3 import Gff3
 from tqdm import tqdm
-
-"""
-Example:
-    (Windows)
-    python -m modmygff --gff_path .\data\Slin_CCMP2456\S.linucheae_CCMP2456_eg1.gff --anno_path .\data\Slin_CCMP2456\S.linucheae_CCMP2456_uniprot_annotated.tsv --output_path .\data\Slin_CCMP2456\S.linucheae_CCMP2456_eg1_ext.gff
-
-    (Unix)
-    python3.6 -m modmygff --anno_path /QRISdata/Q2015/ena_genome_submission/Stri_CCMP2592/S.tridacnidorum_CCMP2592_uniprot_annotated.tsv --gff_path /QRISdata/Q2015/ena_genome_submission/Stri_CCMP2592/S.tridacnidorum_CCMP2592.gff --output_path /QRISdata/Q2015/ena_genome_submission/Stri_CCMP2592/S.tridacnidorum_CCMP2592_ext.gff
-    python -m modmygff --gff_path .\data\Snat_CCMP2548\S.natans_CCMP2548_eg.gff --anno_path .\data\Snat_CCMP2548\S.natans_CCMP2548_uniprot_annotated.tsv --output_path .\data\Snat_CCMP2548\S.natans_CCMP2548_eg_ext.gff
-
-"""
 
 
 class Modifier:
@@ -58,10 +44,11 @@ class Modifier:
 
             anno_df = self.open_anno_file(**open_anno_kwargs)
 
+            anno_df = anno_df[~anno_df.index.duplicated(keep='first')]
+
             self.__anno_dfs.append(anno_df)
 
-            print(anno_df)
-
+    @lru_cache()
     def __getitem__(self, index: str) -> str:
         """
         Returns the corresponding extended information for the given index.
@@ -112,8 +99,7 @@ class Modifier:
         annotation file.
         """
 
-        # for line in tqdm(iterable=gff.lines, desc='Modify Compilation', ascii=True):
-        for line in gff.lines:
+        for line in tqdm(iterable=gff.lines, desc='Modify Compilation', ascii=True):
 
             # Get the ID to use to index on this modifier
             gene_ID = line['attributes']['ID']
@@ -226,7 +212,11 @@ def run_modifier(args):
 
 def main():
 
-    # test: python .\modmygff.py --gff_path ".\data\Pgla_CCMP1383\Pgla_CCMP1383_test.gff3" --annotation ".\data\Pgla_CCMP1383\CCMP1383_UniProt.tsv" 0 1  --annotation ".\data\Pgla_CCMP1383\CCMP1383_scaffolds_PFAM.tsv" 0 5 --output_path ".\data\test_Pgla_CCMP1383_output.gff3"
+    # Pgla_CCMP1383 usage: (TODO: update paths)
+    #   python .\modmygff.py --gff_path ".\data\Pgla_CCMP1383\Polarella_glacialis_CCMP1383_PredGenes_v1.gff3" --annotation ".\data\Pgla_CCMP1383\CCMP1383_UniProt.tsv" 0 1  --annotation ".\data\Pgla_CCMP1383\CCMP1383_scaffolds_PFAM.tsv" 0 5 --output_path ".\data\Polarella_glacialis_CCMP1383_PredGenes_v1_ext.gff3"
+
+    # Pgla_CCMP2088 usage:
+    #   python .\modmygff.py --gff_path ".\data\Pgla_CCMP2088\Polarella_glacialis_CCMP2088.gff3" --annotation ".\data\Pgla_CCMP2088\CCMP2088_UniProt.tsv" 0 1  --annotation ".\data\Pgla_CCMP2088\CCMP2088_pfam.tsv" 0 5 --output_path ".\data\Pgla_CCMP2088\Polarella_glacialis_CCMP2088_ext.gff3"
 
     parser = argparse.ArgumentParser(description="Creates a flat file from a "
                                      "given gff file and annotations file.")
