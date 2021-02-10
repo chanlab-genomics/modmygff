@@ -2,7 +2,7 @@
 
 ## Usage
 
-`modmygff` is a tool to add (possibly multiple) external database references to an existing gff file. It's usage is best shown with a simple example. Take this gff file (`Polarella_glacialis_CCMP2088.gff3`) with the following layout
+`modmygff` is a tool to add (possibly multiple) external database references to an existing gff file. It's usage is best shown with a simple example. Take here this gff file (`Polarella_glacialis_CCMP2088.gff3`) with the following layout
 ```
 CCMP2088_scf7180000719957 | EVM	gene	13904	57986	.	-	.	ID=evm.TU.CCMP2088_scf7180000719957.1;Name=evm.model.CCMP2088_scf7180000719957.1
 

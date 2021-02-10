@@ -34,6 +34,8 @@ class Modifier:
 
         self.__anno_dfs = []
 
+        self._num_df_dots = None
+
         for path, ID_index, ref_index in anno_file:
 
             ID_index = int(ID_index)
@@ -47,6 +49,9 @@ class Modifier:
             anno_df = anno_df[~anno_df.index.duplicated(keep='first')]
 
             self.__anno_dfs.append(anno_df)
+
+            self._num_df_dots = len(
+                list(filter(lambda c: c == '.', anno_df.index[0]))) + 1
 
     @lru_cache()
     def __getitem__(self, index: str) -> str:
@@ -64,9 +69,9 @@ class Modifier:
             except KeyError:
 
                 if index.startswith('cds.'):
-                    index = '.'.join(index.split('.')[1:5])
+                    index = '.'.join(index.split('.')[1:self._num_df_dots + 1])
                 else:
-                    index = '.'.join(index.split('.')[0:4])
+                    index = '.'.join(index.split('.')[0:self._num_df_dots])
 
                 try:
                     # Get the corresponding row in the annotation file
