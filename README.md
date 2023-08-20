@@ -50,3 +50,5 @@ ERROR    Line 1: FORMAT: "##gff-version" missing from the first line
 -> CCMP2088_scf7180000719957    EVM     gene    13904   57986   .       -       .       ID=evm.TU.CCMP2088_scf7180000719957.1;Name=evm.model.CCMP2088_scf7180000719957.1
 Modify Compilation:  16%|#####4                            | 197225/1224532 [00:16<01:28, 11628.37it/s]
 ```
+
+The script does not accept gff3 files with lines start with "##", which will give an "KeyError: 'attributes'". Please check your gff3 file if you got similar error messages. 
